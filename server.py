@@ -85,6 +85,7 @@ class Server:
         self.host, self.port = host, port
         self.last_message = None
         self.new_message = None
+        self.lock = threading.Lock()
         
 
 
@@ -129,7 +130,8 @@ class Server:
                     if (id, passwd) not in self.legal_clients:
                         break
                     ckey = abs(hash(f'{id}{passwd}')+np.random.randint(100000))
-                    self.clients[id] = str(ckey)
+                    with self.lock:
+                        self.clients[id] = str(ckey)
                     ret = ckey
                 elif (match:=re.match(r'([a-zA-Z0-9]+)&([0-9]+)order@([ab]):([A-Z]+):(\d+(?:\.\d+)?):([0-9]+)', datastr)):
                     id, ckey, side, symbol, price, volume = (match.group(i) for i in range(1, 7))
@@ -140,7 +142,8 @@ class Server:
                         break
                     # TODO: Add into odb
                     lorder = LimitOrder(id, side, symbol, float(price), int(volume))
-                    self.odbs[symbol].append(lorder)
+                    with self.lock:
+                        self.odbs[symbol].append(lorder)
                     ret = lorder.otime
                 elif (match:=re.match(r'([a-zA-Z0-9]+)&([0-9]+)order@([ab]):([A-Z]+):(\d+(?:\.\d+)?):([0-9]+):([0-9]+)', datastr)):
                     id, ckey, side, symbol, price, volume, timeout = (match.group(i) for i in range(1, 8))
@@ -151,7 +154,8 @@ class Server:
                         break
                     # TODO: Add into odb
                     tlorder = TimedLimitOrder(id, side, symbol, float(price), int(volume), int(timeout))
-                    self.odbs[symbol].append(tlorder)
+                    with self.lock:
+                        self.odbs[symbol].append(tlorder)
                     ret = tlorder.otime
                 elif (match:=re.match(r'([a-zA-Z0-9]+)&([0-9]+)order@([ab]):([LI]):([A-Z]+):([0-9]+)', datastr)):
                     id, ckey, side, tp, symbol, volume = (match.group(i) for i in range(1, 7))
@@ -165,7 +169,8 @@ class Server:
                         morder = LastingMarketOrder(id, side, symbol, int(volume))
                     else:
                         morder = InstantMarketOrder(id, side, symbol, int(volume))
-                    self.odbs[symbol].append(morder)
+                    with self.lock:
+                        self.odbs[symbol].append(morder)
                     ret = morder.otime
 
                 if ret:
@@ -181,8 +186,7 @@ class Server:
             return
         last_time = time.time_ns()
         while True:
-            lock = threading.Lock()
-            with lock:
+            with self.lock:
                 for odb_ in self.odbs.values():
                     if odb_.mkt_order:
                         order = odb_.mkt_order
