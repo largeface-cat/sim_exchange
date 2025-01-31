@@ -11,6 +11,7 @@ PRICE_TICK_DIGITS = 2
 PRICE_TICK = 0.01
 PRICE_MAX = 1000
 LEGAL_SYMBOLS = ['AAA','BBB']
+INIT_TIME = time.time()
 class Order:
     def __init__(self, id, side, symbol, volume):
         self.id = id
@@ -256,6 +257,7 @@ class Server:
                         while len(odb_.asks[odb_.besta]) <= 0 and odb_.besta < PRICE_MAX:
                             odb_.besta = round(odb_.besta + PRICE_TICK, PRICE_TICK_DIGITS)
                 if time.time_ns() - last_time > 1e9:
+                    print(time.time() - INIT_TIME)
                     for symbol in self.odbs.keys():
                         print(f'{symbol}:{self.odbs[symbol].bestb if self.odbs[symbol].bestb > 0 else None} -|- {self.odbs[symbol].besta if self.odbs[symbol].besta < PRICE_MAX else None}')
                     last_time = time.time_ns()
